@@ -22,7 +22,9 @@ function M.setup(opts)
 
     local multi_buffer_fzf = require("telescope_multi_buffer_fzf")
     local multi_buffer_match = require("telescope_multi_buffer_match")
+
     local recent_buffers = require("telescope_recent_buffers")
+    recent_buffers.setup() --Start tracking buffers so they get stored off
 
     nmap(opts.fzf, function() multi_buffer_fzf.multi_buffer_fuzzy_find() end, "Fuzzy find in open buffers")
     nmap(opts.match, function() multi_buffer_match.multi_buffer_exact_find() end, "Grep through all open buffers for exact query match")
