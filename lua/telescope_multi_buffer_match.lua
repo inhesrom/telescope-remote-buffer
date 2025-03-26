@@ -1,4 +1,4 @@
--- Custom telescope extension for searching across all buffers
+-- Custom telescope extension for searching across all buffers with syntax highlighting
 -- Save this in your neovim config as lua/multi_buffer_search.lua
 local pickers = require('telescope.pickers')
 local finders = require('telescope.finders')
@@ -93,10 +93,45 @@ local multi_buffer_exact_find = function(opts)
                 vim.bo[self.state.bufnr].filetype = ft
             end
 
-            -- Highlight the current line
-            vim.api.nvim_win_set_cursor(status.preview_win, {entry.lnum, 0})
+            -- Create a namespace for our highlights if it doesn't exist
+            if not self.ns_id then
+                self.ns_id = vim.api.nvim_create_namespace("telescope_multi_buffer_search")
+            end
 
-            -- Center the view on the selected line
+            -- Clear existing highlights
+            vim.api.nvim_buf_clear_namespace(self.state.bufnr, self.ns_id, 0, -1)
+
+            -- Highlight the matched line
+            vim.api.nvim_buf_add_highlight(
+                self.state.bufnr,   -- buffer handle
+                self.ns_id,         -- namespace ID
+                "Search",           -- highlight group (using Search which is usually yellow background)
+                entry.lnum - 1,     -- line (0-indexed)
+                0,                  -- start column
+                -1                  -- end column (-1 means the whole line)
+            )
+
+            -- If we have the prompt and current line text, highlight the specific match
+            local prompt = status.picker and status.picker.prompt and status.picker.prompt:get_prompt()
+            if prompt and prompt ~= "" and entry.lnum <= #content then
+                local line = content[entry.lnum]
+                local start_col, end_col = line:find(prompt, 1, true)
+
+                if start_col then
+                    -- Add specific match highlighting (using IncSearch which is usually a different color than Search)
+                    vim.api.nvim_buf_add_highlight(
+                        self.state.bufnr,  -- buffer handle
+                        self.ns_id,        -- namespace ID
+                        "IncSearch",       -- highlight group
+                        entry.lnum - 1,    -- line (0-indexed)
+                        start_col - 1,     -- start column (0-indexed)
+                        end_col            -- end column
+                    )
+                end
+            end
+
+            -- Position the cursor and center the view
+            vim.api.nvim_win_set_cursor(status.preview_win, {entry.lnum, 0})
             local height = vim.api.nvim_win_get_height(status.preview_win)
             local start_line = math.max(1, entry.lnum - math.floor(height / 2))
             vim.api.nvim_win_set_cursor(status.preview_win, {start_line, 0})
