@@ -57,17 +57,26 @@ local multi_buffer_exact_find = function(opts)
             entry.lnum,
             entry.text
         )
-        return {
+
+        -- Create an entry compatible with grep_previewer
+        local ret = {
             value = entry,
             ordinal = display,
             display = display,
             filename = entry.filename,
             bufnr = entry.bufnr,
             lnum = entry.lnum,
-            col = 0,  -- Add column for proper cursor positioning
-            text = entry.text,
-            ft = vim.api.nvim_buf_get_option(entry.bufnr, "filetype") -- Add filetype for syntax highlighting
+            col = 0,
+            text = entry.text
         }
+
+        -- Check if the buffer has a filetype
+        local status, filetype = pcall(vim.api.nvim_buf_get_option, entry.bufnr, "filetype")
+        if status and filetype and filetype ~= "" then
+            ret.ft = filetype
+        end
+
+        return ret
     end
 
     -- Create the picker
@@ -91,7 +100,14 @@ local multi_buffer_exact_find = function(opts)
                 end
             end
         }),
-        previewer = conf.file_previewer(opts),
+        previewer = conf.grep_previewer(vim.tbl_extend("force", opts or {}, {
+            -- Ensure the previewer doesn't trim the content
+            preview_cutoff = 1,
+            -- Highlight the match in the preview
+            -- Note: This may sometimes cause an error if the file has complex syntax
+            -- If that happens, you can remove this option
+            use_ft_detect = true
+        })),
         attach_mappings = function(prompt_bufnr, map)
             -- Default action: jump to the line in the buffer
             actions.select_default:replace(function()
