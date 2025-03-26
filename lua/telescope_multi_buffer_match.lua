@@ -131,11 +131,18 @@ local multi_buffer_exact_find = function(opts)
             end
 
             -- Position the cursor and center the view
-            vim.api.nvim_win_set_cursor(status.preview_win, {entry.lnum, 0})
+            -- Make sure the line number is valid for the preview buffer
+            local preview_line_count = vim.api.nvim_buf_line_count(self.state.bufnr)
+            local target_line = math.min(entry.lnum, preview_line_count)
+
+            -- Safe cursor positioning
+            pcall(vim.api.nvim_win_set_cursor, status.preview_win, {target_line, 0})
+
+            -- Center the view on the selected line (safely)
             local height = vim.api.nvim_win_get_height(status.preview_win)
-            local start_line = math.max(1, entry.lnum - math.floor(height / 2))
-            vim.api.nvim_win_set_cursor(status.preview_win, {start_line, 0})
-            vim.api.nvim_win_set_cursor(status.preview_win, {entry.lnum, 0})
+            local start_line = math.max(1, math.min(target_line - math.floor(height / 2), preview_line_count))
+            pcall(vim.api.nvim_win_set_cursor, status.preview_win, {start_line, 0})
+            pcall(vim.api.nvim_win_set_cursor, status.preview_win, {target_line, 0})
         end
     })
 
