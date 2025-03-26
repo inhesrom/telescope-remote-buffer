@@ -17,9 +17,9 @@ return {
     },
     config = function()
         require("telescope-remote-buffer").setup({
-            -- fzf = 'mapping to trigger fuzzy finding' --default:
-            -- match = 'mapping to trigger matching' --default:
-            -- oldfiles = 'mapping to show recent/old buffers including buffers with remote content' --default:
+            -- fzf = 'mapping to trigger fuzzy finding' --default: <leader>fz
+            -- match = 'mapping to trigger matching' --default: <leader>gb
+            -- oldfiles = 'mapping to show recent/old buffers including buffers with remote content' --default: <leader>rb
         })
     end
 }
