@@ -64,7 +64,9 @@ local multi_buffer_exact_find = function(opts)
             filename = entry.filename,
             bufnr = entry.bufnr,
             lnum = entry.lnum,
-            text = entry.text
+            col = 0,  -- Add column for proper cursor positioning
+            text = entry.text,
+            ft = vim.api.nvim_buf_get_option(entry.bufnr, "filetype") -- Add filetype for syntax highlighting
         }
     end
 
@@ -89,7 +91,7 @@ local multi_buffer_exact_find = function(opts)
                 end
             end
         }),
-        previewer = conf.grep_previewer(opts),
+        previewer = conf.file_previewer(opts),
         attach_mappings = function(prompt_bufnr, map)
             -- Default action: jump to the line in the buffer
             actions.select_default:replace(function()
