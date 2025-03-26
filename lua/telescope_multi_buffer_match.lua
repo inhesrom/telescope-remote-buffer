@@ -7,6 +7,7 @@ local conf = require('telescope.config').values
 local make_entry = require('telescope.make_entry')
 local actions = require('telescope.actions')
 local action_state = require('telescope.actions.state')
+local previewers = require('telescope.previewers')
 
 -- Main function to search across all buffers
 local multi_buffer_exact_find = function(opts)
@@ -58,8 +59,7 @@ local multi_buffer_exact_find = function(opts)
             entry.text
         )
 
-        -- Create an entry compatible with grep_previewer
-        local ret = {
+        return {
             value = entry,
             ordinal = display,
             display = display,
@@ -69,15 +69,40 @@ local multi_buffer_exact_find = function(opts)
             col = 0,
             text = entry.text
         }
-
-        -- Check if the buffer has a filetype
-        local status, filetype = pcall(vim.api.nvim_buf_get_option, entry.bufnr, "filetype")
-        if status and filetype and filetype ~= "" then
-            ret.ft = filetype
-        end
-
-        return ret
     end
+
+    -- Create a custom previewer that properly handles syntax highlighting
+    local buffer_previewer = previewers.new_buffer_previewer({
+        title = "Buffer Preview",
+        get_buffer_by_name = function(_, entry)
+            return entry.bufnr
+        end,
+        define_preview = function(self, entry, status)
+            -- Use the actual buffer for the preview
+            local bufnr = entry.bufnr
+
+            -- Set the previewer buffer to display the content of the actual buffer
+            local content = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+            vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, content)
+
+            -- Get the filetype of the original buffer
+            local ft = vim.bo[bufnr].filetype
+
+            -- Apply the filetype to the preview buffer for syntax highlighting
+            if ft and ft ~= "" then
+                vim.bo[self.state.bufnr].filetype = ft
+            end
+
+            -- Highlight the current line
+            vim.api.nvim_win_set_cursor(status.preview_win, {entry.lnum, 0})
+
+            -- Center the view on the selected line
+            local height = vim.api.nvim_win_get_height(status.preview_win)
+            local start_line = math.max(1, entry.lnum - math.floor(height / 2))
+            vim.api.nvim_win_set_cursor(status.preview_win, {start_line, 0})
+            vim.api.nvim_win_set_cursor(status.preview_win, {entry.lnum, 0})
+        end
+    })
 
     -- Create the picker
     pickers.new(opts, {
@@ -100,14 +125,7 @@ local multi_buffer_exact_find = function(opts)
                 end
             end
         }),
-        previewer = conf.grep_previewer(vim.tbl_extend("force", opts or {}, {
-            -- Ensure the previewer doesn't trim the content
-            preview_cutoff = 1,
-            -- Highlight the match in the preview
-            -- Note: This may sometimes cause an error if the file has complex syntax
-            -- If that happens, you can remove this option
-            use_ft_detect = true
-        })),
+        previewer = buffer_previewer,
         attach_mappings = function(prompt_bufnr, map)
             -- Default action: jump to the line in the buffer
             actions.select_default:replace(function()
