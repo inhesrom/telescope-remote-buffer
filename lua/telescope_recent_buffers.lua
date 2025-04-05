@@ -195,12 +195,24 @@ function M.show_recent_buffers(opts)
 
                 if selection.bufnr and vim.api.nvim_buf_is_valid(selection.bufnr) then
                     -- If buffer still exists, switch to it
+                    local win = vim.api.nvim_get_current_win()
+                    vim.api.nvim_win_set_buf(win, selection.bufnr)
+                    vim.cmd("buffer " .. selection.bufnr)
                     vim.api.nvim_set_current_buf(selection.bufnr)
                 else
                     -- Handle remote paths (rsync://) differently
-                    if selection.bufname:match("^rsync://") then
-                        -- Use RemoteOpen command for rsync paths
-                        vim.cmd("RemoteOpen " .. vim.fn.fnameescape(selection.bufname))
+                    if selection.bufname:match("^rsync://") or selection.bufname:match("^scp://") then
+                        -- Use the improved simple_open_remote_file function
+                        require('async-remote-write.operations').simple_open_remote_file(selection.bufname, nil, {refresh = true})
+
+                        -- Ensure TreeSitter highlighting is applied
+                        vim.defer_fn(function()
+                            local bufnr = vim.api.nvim_get_current_buf()
+                            if vim.api.nvim_buf_is_valid(bufnr) then
+                                local buffer_path = vim.api.nvim_buf_get_name(bufnr)
+                                vim.cmd("doautocmd BufReadPost " .. vim.fn.fnameescape(buffer_path))
+                            end
+                        end, 100)
                     else
                         -- Otherwise, try to open the file normally
                         if vim.fn.filereadable(selection.bufname) == 1 then
